@@ -1,25 +1,30 @@
 import streamlit as st
-from database import get_connection
+from datetime import datetime
 
 def show(user):
     st.title("Donor Dashboard")
 
-    qty = st.number_input("Food Quantity")
-    expiry = st.number_input("Expiry (hrs)")
-    lat = st.number_input("Latitude")
-    lon = st.number_input("Longitude")
+    qty = st.number_input("Food Quantity", min_value=1, step=1)
+    expiry = st.number_input("Expiry (hrs)", min_value=0.0, step=0.5)
+    x = st.number_input("Location X")
+    y = st.number_input("Location Y")
 
     if st.button("Add Donation"):
-        conn = get_connection()
-        c = conn.cursor()
-        c.execute("INSERT INTO donations (user_id, quantity, expiry, lat, lon) VALUES (?, ?, ?, ?, ?)",
-                  (user[0], qty, expiry, lat, lon))
-        conn.commit()
-        conn.close()
-        st.success("Donation Added")
-
-    conn = get_connection()
-    donations = conn.execute("SELECT * FROM donations WHERE user_id=?", (user[0],)).fetchall()
+        next_id = max([order["id"] for order in st.session_state.orders], default=0) + 1
+        st.session_state.orders.append({
+            "id": next_id,
+            "donor_name": user[1],
+            "food_qty": int(qty),
+            "expiry": float(expiry),
+            "location": (x, y),
+            "status": "Pending",
+            "assigned_ngo": None,
+            "created_at": datetime.now(),
+        })
+        st.rerun()
 
     st.write("Your Donations")
-    st.dataframe(donations)
+    st.dataframe(
+        [order for order in st.session_state.orders if order["donor_name"] == user[1]],
+        use_container_width=True,
+    )

@@ -1,21 +1,22 @@
 import folium
 from streamlit_folium import st_folium
 
-def show_map(donations, requests):
+def show_map(orders):
     m = folium.Map(location=[12.97, 77.59], zoom_start=10)
 
-    for d in donations:
-        folium.Marker(
-            [d[4], d[5]],
-            popup=f"Food: {d[2]}",
-            icon=folium.Icon(color="green")
-        ).add_to(m)
+    colors = {
+        "Pending": "green",
+        "Accepted": "blue",
+        "Assigned": "purple",
+        "Expired": "gray",
+    }
 
-    for r in requests:
+    for order in orders:
+        x, y = order["location"]
         folium.Marker(
-            [r[4], r[5]],
-            popup=f"Need: {r[2]}",
-            icon=folium.Icon(color="red")
+            [x, y],
+            popup=f"Food: {order['food_qty']} | Status: {order['status']}",
+            icon=folium.Icon(color=colors.get(order["status"], "green"))
         ).add_to(m)
 
     st_folium(m, width=700)

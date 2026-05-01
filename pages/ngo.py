@@ -1,25 +1,29 @@
 import streamlit as st
-from database import get_connection
 
 def show(user):
     st.title("NGO Dashboard")
+    ngo_name = user[1]
 
-    demand = st.number_input("Food Needed")
-    priority = st.selectbox("Priority", ["High", "Medium", "Low"])
-    lat = st.number_input("Latitude")
-    lon = st.number_input("Longitude")
+    st.subheader("Available Food")
+    for order in st.session_state.orders:
+        if order["status"] != "Pending":
+            continue
 
-    if st.button("Request Food"):
-        conn = get_connection()
-        c = conn.cursor()
-        c.execute("INSERT INTO requests (user_id, demand, priority, lat, lon) VALUES (?, ?, ?, ?, ?)",
-                  (user[0], demand, priority, lat, lon))
-        conn.commit()
-        conn.close()
-        st.success("Request Sent")
+        col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+        col1.write(f"Donor: {order['donor_name']}")
+        col2.write(f"Qty: {order['food_qty']}")
+        col3.write(f"Expiry: {order['expiry']} hrs")
+        if col4.button("Accept", key=f"accept-{order['id']}"):
+            order["status"] = "Accepted"
+            order["assigned_ngo"] = ngo_name
+            st.rerun()
 
-    conn = get_connection()
-    requests = conn.execute("SELECT * FROM requests WHERE user_id=?", (user[0],)).fetchall()
-
-    st.write("Your Requests")
-    st.dataframe(requests)
+    st.subheader("Accepted Orders")
+    st.dataframe(
+        [
+            order
+            for order in st.session_state.orders
+            if order["assigned_ngo"] == ngo_name and order["status"] in ("Accepted", "Assigned")
+        ],
+        use_container_width=True,
+    )

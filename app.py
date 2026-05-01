@@ -6,6 +6,8 @@ init_db()
 
 if "user" not in st.session_state:
     st.session_state.user = None
+if "orders" not in st.session_state:
+    st.session_state.orders = []
 
 st.set_page_config(layout="wide")
 
