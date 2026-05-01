@@ -1,6 +1,7 @@
 import streamlit as st
 from auth import login, signup
 from database import init_db
+from utils import update_expired_orders
 
 init_db()
 
@@ -42,6 +43,8 @@ def login_page():
 def main_app():
     user = st.session_state.user
     role = user[3]
+    if update_expired_orders(st.session_state.orders):
+        st.rerun()
 
     st.sidebar.write(f"Logged in as: {role}")
 

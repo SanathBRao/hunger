@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import datetime
+from utils import order_summary
 
 def show(user):
     st.title("Donor Dashboard")
@@ -23,8 +24,12 @@ def show(user):
         })
         st.rerun()
 
-    st.write("Your Donations")
+    st.subheader("Your Donations")
     st.dataframe(
-        [order for order in st.session_state.orders if order["donor_name"] == user[1]],
+        [
+            order_summary(order)
+            for order in st.session_state.orders
+            if order["donor_name"] == user[1]
+        ],
         use_container_width=True,
     )
