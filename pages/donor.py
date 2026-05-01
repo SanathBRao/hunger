@@ -18,8 +18,14 @@ def show(user):
             "food_qty": int(qty),
             "expiry": float(expiry),
             "location": (x, y),
+            "donor_location": (x, y),
+            "ngo_location": None,
+            "distance": None,
             "status": "Pending",
             "assigned_ngo": None,
+            "delivery_status": "Not Assigned",
+            "cancellation_reason": None,
+            "distributed": False,
             "created_at": datetime.now(),
         })
         st.rerun()

@@ -1,6 +1,13 @@
 import streamlit as st
 from database import get_connection
-from utils import order_summary, show_map
+from utils import (
+    calculate_distance,
+    MAX_DELIVERY_DISTANCE,
+    delivery_feasibility,
+    order_summary,
+    show_map,
+    sync_order_logistics,
+)
 
 def show(user):
     st.title("Admin Dashboard")
@@ -11,6 +18,15 @@ def show(user):
 
     if expired_orders:
         st.warning(f"{len(expired_orders)} expired order(s) need attention.")
+
+    failed_location_orders = []
+    for order in st.session_state.orders:
+        sync_order_logistics(order)
+        if order.get("distance") is not None and order["distance"] > MAX_DELIVERY_DISTANCE:
+            failed_location_orders.append(order)
+
+    if failed_location_orders:
+        st.error(f"{len(failed_location_orders)} order(s) exceed delivery distance limits.")
 
     col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Total Orders", len(st.session_state.orders))
@@ -34,22 +50,35 @@ def show(user):
         ]
         conn.close()
 
-        next_ngo = 0
         for order in sorted(st.session_state.orders, key=lambda item: item["expiry"]):
             if order["status"] == "Pending":
+                sync_order_logistics(order)
+                eligible_ngos = []
+                for ngo_name in ngo_names:
+                    ngo_location = st.session_state.ngo_locations.get(ngo_name)
+                    if not ngo_location:
+                        continue
+
+                    distance = calculate_distance(order["donor_location"], ngo_location)
+                    if distance <= MAX_DELIVERY_DISTANCE and order["expiry"] > 1:
+                        eligible_ngos.append((distance, ngo_name, ngo_location))
+
+                if not eligible_ngos:
+                    continue
+
+                distance, ngo_name, ngo_location = sorted(eligible_ngos)[0]
                 order["status"] = "Assigned"
-                if ngo_names:
-                    order["assigned_ngo"] = ngo_names[next_ngo % len(ngo_names)]
-                    next_ngo += 1
-                else:
-                    order["assigned_ngo"] = "Auto Assigned NGO"
+                order["assigned_ngo"] = ngo_name
+                order["ngo_location"] = ngo_location
+                order["distance"] = distance
+                order["delivery_status"] = "In Transit"
         st.rerun()
 
     if action3.button("Clean Expired/Completed"):
         st.session_state.orders[:] = [
             order
             for order in st.session_state.orders
-            if order["status"] not in ("Expired", "Completed")
+            if order["status"] not in ("Expired", "Completed", "Cancelled")
         ]
         st.rerun()
 
@@ -62,6 +91,16 @@ def show(user):
     st.subheader("Expired Orders")
     st.dataframe(
         [order_summary(order) for order in st.session_state.orders if order["status"] == "Expired"],
+        use_container_width=True,
+    )
+
+    st.subheader("Location-Constrained Deliveries")
+    st.dataframe(
+        [
+            order_summary(order)
+            for order in st.session_state.orders
+            if delivery_feasibility(order) == "Too far"
+        ],
         use_container_width=True,
     )
 

@@ -9,6 +9,8 @@ if "user" not in st.session_state:
     st.session_state.user = None
 if "orders" not in st.session_state:
     st.session_state.orders = []
+if "ngo_locations" not in st.session_state:
+    st.session_state.ngo_locations = {}
 
 st.set_page_config(layout="wide")
 
